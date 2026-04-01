@@ -870,10 +870,10 @@ DIFF_LINES=$(git diff origin/<base> --stat | tail -1 | grep -oE '[0-9]+ insertio
 echo "DIFF_LINES: $DIFF_LINES"
 # Detect test framework for specialist test stub generation
 TEST_FW=""
-[ -f jest.config.ts ] || [ -f jest.config.js ] && TEST_FW="jest"
+{ [ -f jest.config.ts ] || [ -f jest.config.js ]; } && TEST_FW="jest"
 [ -f vitest.config.ts ] && TEST_FW="vitest"
-[ -f spec/spec_helper.rb ] || [ -f .rspec ] && TEST_FW="rspec"
-[ -f pytest.ini ] || [ -f conftest.py ] && TEST_FW="pytest"
+{ [ -f spec/spec_helper.rb ] || [ -f .rspec ]; } && TEST_FW="rspec"
+{ [ -f pytest.ini ] || [ -f conftest.py ]; } && TEST_FW="pytest"
 [ -f go.mod ] && TEST_FW="go-test"
 echo "TEST_FW: ${TEST_FW:-unknown}"
 ```
