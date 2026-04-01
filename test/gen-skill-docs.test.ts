@@ -1969,13 +1969,14 @@ describe('setup script validation', () => {
     expect(fnBody).toContain('gstack*');
   });
 
-  test('link_claude_skill_dirs creates relative symlinks', () => {
-    // Claude links should be relative: ln -snf "gstack/$dir_name"
-    // Uses dir_name (not skill_name) because symlink target must point to the physical directory
+  test('link_claude_skill_dirs creates real directories with absolute SKILL.md symlinks', () => {
+    // Claude links should be real directories with absolute SKILL.md symlinks
+    // to ensure Claude Code discovers them as top-level skills (not nested under gstack/)
     const fnStart = setupContent.indexOf('link_claude_skill_dirs()');
     const fnEnd = setupContent.indexOf('}', setupContent.indexOf('linked[@]}', fnStart));
     const fnBody = setupContent.slice(fnStart, fnEnd);
-    expect(fnBody).toContain('ln -snf "gstack/$dir_name"');
+    expect(fnBody).toContain('mkdir -p "$target"');
+    expect(fnBody).toContain('ln -snf "$gstack_dir/$dir_name/SKILL.md" "$target/SKILL.md"');
   });
 
   test('setup supports --host auto|claude|codex|kiro', () => {
