@@ -241,10 +241,14 @@ function handleAgentEvent(entry) {
   if (thinking) thinking.remove();
 
   if (entry.type === 'tool_use') {
-    const toolEl = document.createElement('div');
-    toolEl.className = 'agent-tool';
     const toolName = entry.tool || 'Tool';
     const toolInput = entry.input || '';
+
+    // Skip tool uses with no description (e.g. internal tool-result file reads)
+    if (!toolInput) return;
+
+    const toolEl = document.createElement('div');
+    toolEl.className = 'agent-tool';
 
     // Use the verbose description as the primary text
     // The tool name becomes a subtle badge

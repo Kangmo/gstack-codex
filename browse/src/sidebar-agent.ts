@@ -167,7 +167,11 @@ function describeToolCall(tool: string, input: any): string {
     return short.length > 100 ? short.slice(0, 100) + '…' : short;
   }
 
-  if (tool === 'Read' && input.file_path) return `Reading ${shorten(input.file_path)}`;
+  if (tool === 'Read' && input.file_path) {
+    // Skip Claude's internal tool-result file reads — they're plumbing, not user-facing
+    if (input.file_path.includes('/tool-results/') || input.file_path.includes('/.claude/projects/')) return '';
+    return `Reading ${shorten(input.file_path)}`;
+  }
   if (tool === 'Edit' && input.file_path) return `Editing ${shorten(input.file_path)}`;
   if (tool === 'Write' && input.file_path) return `Writing ${shorten(input.file_path)}`;
   if (tool === 'Grep' && input.pattern) return `Searching for "${input.pattern}"`;
