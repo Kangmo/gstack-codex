@@ -617,72 +617,26 @@ async function handlePairAgent(state: ServerState, args: string[]): Promise<void
     // No tunnel active. Check if ngrok is available and auto-start.
     const ngrokAvailable = isNgrokAvailable();
     if (ngrokAvailable) {
-      console.log('[browse] ngrok is available. Starting tunnel...');
-      // Restart server with tunnel enabled
+      console.log('[browse] ngrok detected. Starting tunnel...');
       try {
-        const restartResp = await fetch(`http://127.0.0.1:${state.port}/command`, {
+        const tunnelResp = await fetch(`http://127.0.0.1:${state.port}/tunnel/start`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.token}`,
-          },
-          body: JSON.stringify({ command: 'restart', args: [] }),
-          signal: AbortSignal.timeout(5000),
-        }).catch(() => null);
-        // Wait for server to come back, then restart with tunnel
-        await Bun.sleep(1000);
-      } catch {}
-      // Restart the server process with BROWSE_TUNNEL=1
-      console.log('[browse] Restarting server with tunnel...');
-      const serverScript = resolveServerScript();
-      const proc = Bun.spawn(['bun', 'run', serverScript], {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: { ...process.env, BROWSE_STATE_FILE: config.stateFile, BROWSE_TUNNEL: '1' },
-      });
-      proc.unref();
-      // Wait for server to come back with tunnel
-      const deadline = Date.now() + 15000;
-      let tunnelUrl: string | null = null;
-      while (Date.now() < deadline) {
-        await Bun.sleep(500);
-        const newState = readState();
-        if (newState && await isServerHealthy(newState.port)) {
-          try {
-            const healthResp = await fetch(`http://127.0.0.1:${newState.port}/health`, {
-              signal: AbortSignal.timeout(2000),
-            });
-            const health = await healthResp.json() as any;
-            if (health.tunnel?.url) {
-              tunnelUrl = health.tunnel.url;
-              // Update state for the rest of the function
-              state.port = newState.port;
-              state.token = newState.token;
-              break;
-            }
-          } catch {}
-        }
-      }
-      if (tunnelUrl) {
-        console.log(`[browse] Tunnel active: ${tunnelUrl}\n`);
-        serverUrl = tunnelUrl;
-        // Re-create setup key with the new server (old one used old root token)
-        const newPairResp = await fetch(`http://127.0.0.1:${state.port}/pair`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${state.token}`,
-          },
-          body: JSON.stringify({ clientId: clientName, admin }),
-          signal: AbortSignal.timeout(5000),
+          headers: { 'Authorization': `Bearer ${state.token}` },
+          signal: AbortSignal.timeout(15000),
         });
-        if (newPairResp.ok) {
-          const newData = await newPairResp.json() as typeof pairData;
-          pairData.setup_key = newData.setup_key;
-          pairData.expires_at = newData.expires_at;
-          pairData.scopes = newData.scopes;
+        const tunnelData = await tunnelResp.json() as any;
+        if (tunnelResp.ok && tunnelData.url) {
+          console.log(`[browse] Tunnel active: ${tunnelData.url}\n`);
+          serverUrl = tunnelData.url;
+        } else {
+          console.warn(`[browse] Tunnel failed: ${tunnelData.error || 'unknown error'}`);
+          if (tunnelData.hint) console.warn(`[browse] ${tunnelData.hint}`);
+          console.warn('[browse] Using localhost (same-machine only).\n');
+          serverUrl = pairData.server_url;
         }
-      } else {
-        console.warn('[browse] Failed to start tunnel. Using localhost (same-machine only).\n');
+      } catch (err: any) {
+        console.warn(`[browse] Tunnel failed: ${err.message}`);
+        console.warn('[browse] Using localhost (same-machine only).\n');
         serverUrl = pairData.server_url;
       }
     } else {

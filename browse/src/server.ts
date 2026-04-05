@@ -1374,6 +1374,77 @@ async function start() {
         }
       }
 
+      // ─── /tunnel/start — start ngrok tunnel on demand (root-only) ──
+      if (url.pathname === '/tunnel/start' && req.method === 'POST') {
+        if (!isRootRequest(req)) {
+          return new Response(JSON.stringify({ error: 'Root token required' }), {
+            status: 403, headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (tunnelActive) {
+          return new Response(JSON.stringify({ url: tunnelUrl, already_active: true }), {
+            status: 200, headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        try {
+          // Read ngrok authtoken: env var > ~/.gstack/ngrok.env > ngrok native config
+          let authtoken = process.env.NGROK_AUTHTOKEN;
+          if (!authtoken) {
+            const ngrokEnvPath = path.join(process.env.HOME || '', '.gstack', 'ngrok.env');
+            if (fs.existsSync(ngrokEnvPath)) {
+              const envContent = fs.readFileSync(ngrokEnvPath, 'utf-8');
+              const match = envContent.match(/^NGROK_AUTHTOKEN=(.+)$/m);
+              if (match) authtoken = match[1].trim();
+            }
+          }
+          if (!authtoken) {
+            // Check ngrok's native config files
+            const ngrokConfigs = [
+              path.join(process.env.HOME || '', 'Library', 'Application Support', 'ngrok', 'ngrok.yml'),
+              path.join(process.env.HOME || '', '.config', 'ngrok', 'ngrok.yml'),
+              path.join(process.env.HOME || '', '.ngrok2', 'ngrok.yml'),
+            ];
+            for (const conf of ngrokConfigs) {
+              try {
+                const content = fs.readFileSync(conf, 'utf-8');
+                const match = content.match(/authtoken:\s*(.+)/);
+                if (match) { authtoken = match[1].trim(); break; }
+              } catch {}
+            }
+          }
+          if (!authtoken) {
+            return new Response(JSON.stringify({
+              error: 'No ngrok authtoken found',
+              hint: 'Run: ngrok config add-authtoken YOUR_TOKEN',
+            }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+          }
+          const ngrok = await import('@ngrok/ngrok');
+          const domain = process.env.NGROK_DOMAIN;
+          const forwardOpts: any = { addr: server!.port, authtoken };
+          if (domain) forwardOpts.domain = domain;
+
+          tunnelListener = await ngrok.forward(forwardOpts);
+          tunnelUrl = tunnelListener.url();
+          tunnelActive = true;
+          console.log(`[browse] Tunnel started on demand: ${tunnelUrl}`);
+
+          // Update state file
+          const stateContent = JSON.parse(fs.readFileSync(config.stateFile, 'utf-8'));
+          stateContent.tunnel = { url: tunnelUrl, domain: domain || null, startedAt: new Date().toISOString() };
+          const tmpState = config.stateFile + '.tmp';
+          fs.writeFileSync(tmpState, JSON.stringify(stateContent, null, 2), { mode: 0o600 });
+          fs.renameSync(tmpState, config.stateFile);
+
+          return new Response(JSON.stringify({ url: tunnelUrl }), {
+            status: 200, headers: { 'Content-Type': 'application/json' },
+          });
+        } catch (err: any) {
+          return new Response(JSON.stringify({
+            error: `Failed to start tunnel: ${err.message}`,
+          }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }
+      }
+
       // Refs endpoint — auth required, does NOT reset idle timer
       if (url.pathname === '/refs') {
         if (!validateAuth(req)) {
