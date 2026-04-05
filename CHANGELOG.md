@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.15.6.1] - 2026-04-04 — Anti-Skip Review Rule
+## [0.15.6.2] - 2026-04-04 — Anti-Skip Review Rule
 
 Review skills now enforce that every section gets evaluated, regardless of plan type. No more "this is a strategy doc so implementation sections don't apply." If a section genuinely has nothing to flag, say so and move on, but you have to look.
 
@@ -8,6 +8,12 @@ Review skills now enforce that every section gets evaluated, regardless of plan 
 
 - **Anti-skip rule in all 4 review skills.** CEO review (sections 1-11), eng review (sections 1-4), design review (passes 1-7), and DX review (passes 1-8) all now require explicit evaluation of every section. Models can no longer skip sections by claiming the plan type makes them irrelevant.
 - **CEO review header fix.** Corrected "10 sections" to "11 sections" to match the actual section count (Section 11 is conditional but exists).
+
+## [0.15.6.1] - 2026-04-04
+
+### Fixed
+
+- **Skill prefix self-healing.** Setup now runs `gstack-relink` as a final consistency check after linking skills. If an interrupted setup, stale git state, or upgrade left your `name:` fields out of sync with `skill_prefix: false`, setup will auto-correct on the next run. No more `/gstack-qa` when you wanted `/qa`.
 
 ## [0.15.6.0] - 2026-04-04 — Declarative Multi-Host Platform
 
