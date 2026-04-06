@@ -1290,7 +1290,9 @@ async function start() {
         };
         // Sensitive fields only served on localhost (not through tunnel).
         // currentUrl reveals internal URLs, currentMessage reveals user intent.
+        // token needed by extension to authenticate subsequent requests.
         if (!tunnelActive) {
+          healthResponse.token = AUTH_TOKEN;
           healthResponse.currentUrl = browserManager.getCurrentUrl();
           healthResponse.chatEnabled = true;
           healthResponse.agent = {
