@@ -232,4 +232,64 @@ describe('Server auth security', () => {
     // Must fall through to restart logic on failure
     expect(pairSection).toContain('attempting restart');
   });
+
+  // ─── Batch endpoint security ─────────────────────────────────
+
+  // Test 12a: /batch endpoint sits ABOVE the blanket root-only auth gate (same as /command)
+  test('/batch endpoint sits ABOVE the blanket root-only auth gate', () => {
+    const batchIdx = SERVER_SRC.indexOf("url.pathname === '/batch'");
+    const blanketGateIdx = SERVER_SRC.indexOf("Auth-required endpoints (root token only)");
+    expect(batchIdx).toBeGreaterThan(0);
+    expect(blanketGateIdx).toBeGreaterThan(0);
+    expect(batchIdx).toBeLessThan(blanketGateIdx);
+  });
+
+  // Test 12b: /batch uses getTokenInfo (accepts scoped tokens), not validateAuth (root-only)
+  test('/batch uses getTokenInfo for auth, not validateAuth', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain('getTokenInfo');
+    expect(batchBlock).not.toContain('validateAuth');
+  });
+
+  // Test 12c: /batch enforces max command limit
+  test('/batch enforces max 50 commands per batch', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain('commands.length > 50');
+    expect(batchBlock).toContain('Max 50 commands per batch');
+  });
+
+  // Test 12d: /batch rejects nested batches
+  test('/batch rejects nested batch commands', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain("cmd.command === 'batch'");
+    expect(batchBlock).toContain('Nested batch commands are not allowed');
+  });
+
+  // Test 12e: /batch skips per-command rate limiting (batch counts as 1 request)
+  test('/batch skips per-command rate limiting', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain('skipRateCheck: true');
+  });
+
+  // Test 12f: /batch skips per-command activity events (emits batch-level events)
+  test('/batch emits batch-level activity, not per-command', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain('skipActivity: true');
+    // Should emit batch-level start and end events
+    expect(batchBlock).toContain("command: 'batch'");
+  });
+
+  // Test 12g: /batch validates command field in each command
+  test('/batch validates each command has a command field', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain("typeof cmd.command !== 'string'");
+    expect(batchBlock).toContain('Missing "command" field');
+  });
+
+  // Test 12h: /batch passes tabId through to handleCommandInternal
+  test('/batch passes tabId to handleCommandInternal for multi-tab support', () => {
+    const batchBlock = sliceBetween(SERVER_SRC, "url.pathname === '/batch'", "url.pathname === '/command'");
+    expect(batchBlock).toContain('tabId: cmd.tabId');
+    expect(batchBlock).toContain('handleCommandInternal');
+  });
 });
