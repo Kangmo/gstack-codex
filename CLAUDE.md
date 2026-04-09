@@ -20,7 +20,8 @@ bun run dev:skill    # watch mode: auto-regen + validate on change
 bun run eval:list    # list all eval runs from ~/.gstack-dev/evals/
 bun run eval:compare # compare two eval runs (auto-picks most recent)
 bun run eval:summary # aggregate stats across all eval runs
-bun run slop          # slop-scan diagnostic (not a gate, just a number)
+bun run slop          # full slop-scan report (all files)
+bun run slop:diff     # slop findings in files changed on this branch only
 ```
 
 `test:evals` requires `ANTHROPIC_API_KEY`. Codex E2E tests (`test/codex-e2e.test.ts`)
