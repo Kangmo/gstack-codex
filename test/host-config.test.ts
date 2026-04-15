@@ -3,7 +3,7 @@
  * host-config-export.ts, and golden-file regression checks.
  */
 
-import { describe, test, expect } from 'bun:test';
+import { beforeAll, describe, test, expect } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { validateHostConfig, validateAllConfigs, type HostConfig } from '../scripts/host-config';
@@ -26,6 +26,22 @@ import {
 import { HOST_PATHS } from '../scripts/resolvers/types';
 
 const ROOT = path.resolve(import.meta.dir, '..');
+
+function ensureGeneratedHostOutput(host: 'codex' | 'factory'): void {
+  const expectedPath = host === 'codex'
+    ? path.join(ROOT, '.agents', 'skills', 'gstack-ship', 'SKILL.md')
+    : path.join(ROOT, '.factory', 'skills', 'gstack-ship', 'SKILL.md');
+
+  if (fs.existsSync(expectedPath)) return;
+
+  const result = Bun.spawnSync(['bun', 'run', 'scripts/gen-skill-docs.ts', '--host', host], {
+    cwd: ROOT,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  expect(result.exitCode).toBe(0);
+  expect(fs.existsSync(expectedPath)).toBe(true);
+}
 
 // ─── hosts/index.ts ─────────────────────────────────────────
 
@@ -376,6 +392,11 @@ describe('host-config-export.ts CLI', () => {
 
 describe('golden-file regression', () => {
   const GOLDEN_DIR = path.join(ROOT, 'test', 'fixtures', 'golden');
+
+  beforeAll(() => {
+    ensureGeneratedHostOutput('codex');
+    ensureGeneratedHostOutput('factory');
+  });
 
   test('Claude ship skill matches golden baseline', () => {
     const golden = fs.readFileSync(path.join(GOLDEN_DIR, 'claude-ship-SKILL.md'), 'utf-8');

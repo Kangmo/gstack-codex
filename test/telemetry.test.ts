@@ -389,8 +389,12 @@ describe('gstack-community-dashboard', () => {
   });
 
   test('connects to Supabase when config exists', () => {
-    // Use the real GSTACK_DIR which has supabase/config.sh
-    const output = run(`${BIN}/gstack-community-dashboard`);
+    // Use an explicit fake config so the "configured" branch runs without
+    // depending on the real network or a live Supabase project.
+    const output = run(`${BIN}/gstack-community-dashboard`, {
+      GSTACK_SUPABASE_URL: 'http://127.0.0.1:9',
+      GSTACK_SUPABASE_ANON_KEY: 'test-anon-key',
+    });
     expect(output).toContain('gstack community dashboard');
     // Should not show "not configured" since config.sh exists
     expect(output).not.toContain('Supabase not configured');

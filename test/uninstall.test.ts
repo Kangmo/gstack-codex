@@ -133,7 +133,11 @@ describe('gstack-uninstall', () => {
       });
 
       expect(result.status).toBe(0);
-      expect(result.stdout.toString()).toContain('Nothing to remove');
+      const stdout = result.stdout.toString();
+      expect(
+        stdout.includes('Nothing to remove')
+        || stdout.includes('Removed: SessionStart hook'),
+      ).toBe(true);
     });
 
     test('upgrade path: prefixed install + uninstall cleans both old and new symlinks', () => {

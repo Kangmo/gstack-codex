@@ -324,7 +324,10 @@ describe('gstack-team-init', () => {
 
 describe('setup --team / --no-team / -q', () => {
   test('setup -q produces no stdout', () => {
-    const result = run(`${path.join(ROOT, 'setup')} -q`, { cwd: ROOT });
+    const result = run(`${path.join(ROOT, 'setup')} -q`, {
+      cwd: ROOT,
+      env: { GSTACK_SKIP_BROWSER_CHECK: '1' },
+    });
     // -q should suppress informational output (may still have some output from build)
     // The key test is that the "Skill naming:" prompt and "gstack ready" messages are suppressed
     expect(result.stdout).not.toContain('Skill naming:');
@@ -333,7 +336,10 @@ describe('setup --team / --no-team / -q', () => {
 
   test('setup --local prints deprecation warning', () => {
     // stderr capture: run via bash redirect so we can capture stderr
-    const result = run(`bash -c '${path.join(ROOT, 'setup')} --local -q 2>&1'`, { cwd: ROOT });
+    const result = run(`bash -c '${path.join(ROOT, 'setup')} --local -q 2>&1'`, {
+      cwd: ROOT,
+      env: { GSTACK_SKIP_BROWSER_CHECK: '1' },
+    });
     expect(result.stdout).toContain('deprecated');
   });
 });

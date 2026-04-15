@@ -192,6 +192,37 @@ ensure_playwright_browser() {
   fi
 }
 
+generated_skill_docs_stale() {
+  local output_dir="$1"
+  local sentinel="$output_dir/gstack-ship/SKILL.md"
+  local newer=""
+
+  [ ! -f "$sentinel" ] && return 0
+
+  newer="$(
+    find "$SOURCE_GSTACK_DIR" \
+      \( -path "$SOURCE_GSTACK_DIR/node_modules" \
+      -o -path "$SOURCE_GSTACK_DIR/.agents" \
+      -o -path "$SOURCE_GSTACK_DIR/.factory" \
+      -o -path "$SOURCE_GSTACK_DIR/.kiro" \
+      -o -path "$SOURCE_GSTACK_DIR/.opencode" \
+      -o -path "$SOURCE_GSTACK_DIR/.slate" \
+      -o -path "$SOURCE_GSTACK_DIR/.cursor" \
+      -o -path "$SOURCE_GSTACK_DIR/.openclaw" \
+      -o -path "$SOURCE_GSTACK_DIR/browse/dist" \
+      -o -path "$SOURCE_GSTACK_DIR/design/dist" \) -prune -o \
+      -type f \
+      \( -name 'SKILL.md.tmpl' \
+      -o -path "$SOURCE_GSTACK_DIR/scripts/*" \
+      -o -path "$SOURCE_GSTACK_DIR/hosts/*" \
+      -o -name 'package.json' \
+      -o -name 'VERSION' \) \
+      -newer "$sentinel" -print -quit 2>/dev/null
+  )"
+
+  [ -n "$newer" ]
+}
+
 # 1. Build browse binary if needed (smart rebuild: stale sources, package.json, lock)
 NEEDS_BUILD=0
 if [ ! -x "$BROWSE_BIN" ]; then
@@ -222,13 +253,15 @@ if [ ! -x "$BROWSE_BIN" ]; then
   exit 1
 fi
 
-# 1b. Generate .agents/ Codex skill docs — always regenerate to prevent stale descriptions.
-# .agents/ is no longer committed — generated at setup time from .tmpl templates.
-# bun run build already does this, but we need it when NEEDS_BUILD=0 (binary is fresh).
-# Always regenerate: generation is fast (<2s) and mtime-based staleness checks are fragile
-# (miss stale files when timestamps match after clone/checkout/upgrade).
+# 1b. Generate .agents/ Codex skill docs when Codex install is requested and
+# the generated artifacts are missing or stale. bun run build already handles
+# this when NEEDS_BUILD=1.
 AGENTS_DIR="$SOURCE_GSTACK_DIR/.agents/skills"
-NEEDS_AGENTS_GEN=1
+NEEDS_AGENTS_GEN=0
+
+if [ "$INSTALL_CODEX" -eq 1 ] && generated_skill_docs_stale "$AGENTS_DIR"; then
+  NEEDS_AGENTS_GEN=1
+fi
 
 if [ "$NEEDS_AGENTS_GEN" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
   log "Generating .agents/ skill docs..."
@@ -240,7 +273,14 @@ if [ "$NEEDS_AGENTS_GEN" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
 fi
 
 # 1c. Generate .factory/ Factory Droid skill docs
-if [ "$INSTALL_FACTORY" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
+FACTORY_GENERATED_DIR="$SOURCE_GSTACK_DIR/.factory/skills"
+NEEDS_FACTORY_GEN=0
+
+if [ "$INSTALL_FACTORY" -eq 1 ] && generated_skill_docs_stale "$FACTORY_GENERATED_DIR"; then
+  NEEDS_FACTORY_GEN=1
+fi
+
+if [ "$NEEDS_FACTORY_GEN" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
   log "Generating .factory/ skill docs..."
   (
     cd "$SOURCE_GSTACK_DIR"
@@ -250,7 +290,9 @@ if [ "$INSTALL_FACTORY" -eq 1 ] && [ "$NEEDS_BUILD" -eq 0 ]; then
 fi
 
 # 2. Ensure Playwright's Chromium is available
-if ! ensure_playwright_browser; then
+if [ "${GSTACK_SKIP_BROWSER_CHECK:-0}" = "1" ]; then
+  :
+elif ! ensure_playwright_browser; then
   echo "Installing Playwright Chromium..."
   (
     cd "$SOURCE_GSTACK_DIR"
@@ -503,10 +545,13 @@ create_codex_runtime_root() {
     rm -rf "$codex_gstack"
   fi
 
-  mkdir -p "$codex_gstack" "$codex_gstack/browse" "$codex_gstack/gstack-upgrade" "$codex_gstack/review"
+  mkdir -p "$codex_gstack" "$codex_gstack/agents" "$codex_gstack/browse" "$codex_gstack/gstack-upgrade" "$codex_gstack/review"
 
   if [ -f "$agents_dir/gstack/SKILL.md" ]; then
     ln -snf "$agents_dir/gstack/SKILL.md" "$codex_gstack/SKILL.md"
+  fi
+  if [ -f "$gstack_dir/agents/openai.yaml" ]; then
+    ln -snf "$gstack_dir/agents/openai.yaml" "$codex_gstack/agents/openai.yaml"
   fi
   if [ -d "$gstack_dir/bin" ]; then
     ln -snf "$gstack_dir/bin" "$codex_gstack/bin"

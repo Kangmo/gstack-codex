@@ -13,10 +13,15 @@ DIST_DIR="$GSTACK_DIR/browse/dist"
 
 echo "Building Node-compatible server bundle..."
 
-# Step 1: Transpile server.ts to a single .mjs bundle (externalize runtime deps)
+# Step 1: Bundle server.ts for Node.
+#
+# Bun 1.3+ emits native addon assets for ngrok, so `--outfile` is no longer
+# valid here because the build can produce more than one output file.
+# Use `--outdir` and pin the entry filename instead.
 bun build "$SRC_DIR/server.ts" \
   --target=node \
-  --outfile "$DIST_DIR/server-node.mjs" \
+  --outdir "$DIST_DIR" \
+  --entry-naming server-node.mjs \
   --external playwright \
   --external playwright-core \
   --external diff \

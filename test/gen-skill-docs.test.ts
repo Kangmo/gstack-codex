@@ -2062,6 +2062,12 @@ describe('setup script validation', () => {
     expect(setupContent).toContain('link_codex_skill_dirs "$SOURCE_GSTACK_DIR" "$CODEX_SKILLS"');
   });
 
+  test('setup only regenerates external skill docs when install is requested and output is stale', () => {
+    expect(setupContent).toContain('generated_skill_docs_stale()');
+    expect(setupContent).toContain('if [ "$INSTALL_CODEX" -eq 1 ] && generated_skill_docs_stale "$AGENTS_DIR"; then');
+    expect(setupContent).toContain('if [ "$INSTALL_FACTORY" -eq 1 ] && generated_skill_docs_stale "$FACTORY_GENERATED_DIR"; then');
+  });
+
   test('Codex installs always create sidecar runtime assets for the real skill target', () => {
     expect(setupContent).toContain('if [ "$INSTALL_CODEX" -eq 1 ]; then');
     expect(setupContent).toContain('create_agents_sidecar "$SOURCE_GSTACK_DIR"');
@@ -2167,6 +2173,7 @@ describe('setup script validation', () => {
     const fnEnd = setupContent.indexOf('}', setupContent.indexOf('done', setupContent.indexOf('review/', fnStart)));
     const fnBody = setupContent.slice(fnStart, fnEnd);
     expect(fnBody).toContain('gstack/SKILL.md');
+    expect(fnBody).toContain('agents/openai.yaml');
     expect(fnBody).toContain('browse/dist');
     expect(fnBody).toContain('browse/bin');
     expect(fnBody).toContain('gstack-upgrade/SKILL.md');
