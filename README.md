@@ -351,6 +351,7 @@ I open sourced how I build software. You can fork it and make it your own.
 
 | Doc | What it covers |
 |-----|---------------|
+| [Codex Guide](docs/CODEX.md) | How gstack works in Codex CLI and Codex App, what this port adds, and prompt-ready `gstack-*` usage examples |
 | [Skill Deep Dives](docs/skills.md) | Philosophy, examples, and workflow for every skill (includes Greptile integration) |
 | [Builder Ethos](ETHOS.md) | Builder philosophy: Boil the Lake, Search Before Building, three layers of knowledge |
 | [Architecture](ARCHITECTURE.md) | Design decisions and system internals |
